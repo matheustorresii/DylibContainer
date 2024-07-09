@@ -29,8 +29,10 @@ struct ContentView: View {
             .padding()
 
             if let error = downloadError {
-                Text("Error: \(error)")
-                    .foregroundColor(.red)
+                ScrollView {
+                    Text("Error: \(error)")
+                        .foregroundColor(.red)
+                }
             }
         }.onAppear {
             clearCache()
@@ -96,7 +98,7 @@ struct ContentView: View {
         let handle = dlopen(dylibPath.path, RTLD_NOW)
         guard handle != nil else {
             if let error = dlerror() {
-                downloadError = "dlopen error"
+                downloadError = "dlopen error: \(String(cString: error))"
                 print("dlopen error: \(String(cString: error))")
             }
             return
