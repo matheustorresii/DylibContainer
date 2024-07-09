@@ -32,11 +32,21 @@ struct ContentView: View {
                 Text("Error: \(error)")
                     .foregroundColor(.red)
             }
+        }.onAppear {
+            clearCache()
         }
+    }
+    
+    private func getDylibName() -> String {
+        #if targetEnvironment(simulator)
+            return "libDylibPackage-sim.dylib"
+        #else
+            return "libDylibPackage.dylib"
+        #endif
     }
 
     func downloadDylib() {
-        guard let url = URL(string: "https://github.com/matheustorresii/DylibPackage/raw/main/libDylibPackage.dylib") else {
+        guard let url = URL(string: "https://github.com/matheustorresii/DylibPackage/raw/main/\(getDylibName())") else {
             print("Invalid URL")
             return
         }
@@ -75,9 +85,10 @@ struct ContentView: View {
 
     func navigateToDynamicView() {
         let docsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let dylibPath = docsPath.appendingPathComponent("libDylibPackage.dylib")
+        let dylibPath = docsPath.appendingPathComponent(getDylibName())
         
         guard FileManager.default.fileExists(atPath: dylibPath.path) else {
+            downloadError = "Dylib not found. Please download it first."
             print("Dylib not found. Please download it first.")
             return
         }
@@ -85,6 +96,7 @@ struct ContentView: View {
         let handle = dlopen(dylibPath.path, RTLD_NOW)
         guard handle != nil else {
             if let error = dlerror() {
+                downloadError = "dlopen error"
                 print("dlopen error: \(String(cString: error))")
             }
             return
@@ -94,6 +106,7 @@ struct ContentView: View {
         let symbol = dlsym(handle, "createDynamicView")
         guard symbol != nil else {
             if let error = dlerror() {
+                downloadError = "dlsym error"
                 print("dlsym error: \(String(cString: error))")
             }
             return
@@ -105,6 +118,23 @@ struct ContentView: View {
         let dynamicViewController = UIHostingController(rootView: view)
         if let window = UIApplication.shared.windows.first {
             window.rootViewController?.present(dynamicViewController, animated: true, completion: nil)
+        }
+    }
+    
+    func clearCache() {
+        let cacheUrl = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fileManager = FileManager.default
+        do {
+            let directoryContents = try FileManager.default.contentsOfDirectory(at: cacheUrl, includingPropertiesForKeys: nil, options: [])
+            for file in directoryContents {
+                do {
+                    try fileManager.removeItem(at: file)
+                } catch let error as NSError {
+                    print("clear cache error: \(error)")
+                }
+            }
+        } catch let error as NSError {
+            print(error.localizedDescription)
         }
     }
 }
